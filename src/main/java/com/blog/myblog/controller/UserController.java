@@ -29,7 +29,10 @@ public class UserController {
 		return service.getAllUsers();
 	}
 	
-	
+	@GetMapping("/deleteprofile")
+	public void deleteUser() {
+		service.deleteUser();
+	}
 	
 	
 }
