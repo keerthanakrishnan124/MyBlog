@@ -14,6 +14,7 @@ import org.springframework.web.bind.annotation.RestController;
 
 import com.blog.myblog.model.BlogListDTO;
 import com.blog.myblog.model.BlogUpdateDTO;
+import com.blog.myblog.model.Blog;
 import com.blog.myblog.model.BlogDTO;
 import com.blog.myblog.service.BlogService;
 
@@ -62,5 +63,10 @@ public class BlogController {
 	@GetMapping("/delete/{id}")
 	public void delete(@PathVariable int id) {
 		service.delete(id);
+	}
+	
+	@GetMapping("/search/{keyword}")
+	public List<BlogListDTO> search(@PathVariable String keyword) {
+		return service.search(keyword);
 	}
 }

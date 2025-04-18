@@ -149,5 +149,18 @@ public class BlogService {
 	        validateUserAccess(blog, null);
 	        blogRepo.delete(blog);
 	    }
+	 
+	 public List<BlogListDTO> search(String keyword) {
+		 List<Blog> blogs=blogRepo.searchbyTitleorCategory(keyword);
+		 List<BlogListDTO> list=blogs.stream().map(blog -> new BlogListDTO(
+					blog.getId(),
+					blog.getTitle(),
+					blog.getAuthor().getFullname(),
+					blog.getCategory(),
+					blog.getCreatedAt(),
+					blog.getViews()
+					)).collect(Collectors.toList());
+			return list;
+	 }
 
 }
