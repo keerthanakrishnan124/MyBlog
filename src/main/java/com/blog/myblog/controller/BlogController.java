@@ -18,7 +18,7 @@ import com.blog.myblog.model.BlogDTO;
 import com.blog.myblog.service.BlogService;
 
 @RestController
-//@RequestMapping("/blog")
+@RequestMapping("/blog")
 public class BlogController {
 	
 	@Autowired
@@ -57,5 +57,10 @@ public class BlogController {
 	@GetMapping("/blogs/{id}")
 	public BlogDTO response(@PathVariable int id) {
 		return service.viewBlog(id);
+	}
+	
+	@GetMapping("/delete/{id}")
+	public void delete(@PathVariable int id) {
+		service.delete(id);
 	}
 }

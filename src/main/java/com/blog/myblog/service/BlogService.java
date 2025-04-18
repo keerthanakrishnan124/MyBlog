@@ -40,16 +40,28 @@ public class BlogService {
 				blog.getCreatedAt(),
 				blog.getUpdatedAt());
 	}
+	private Users getCurrentUser() {
+	    Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+	    String username = authentication.getName();
+	    return userRepo.findByEmail(username)
+	            .orElseThrow(() -> new UsernameNotFoundException(username));
+	}
+	
+	private Users validateUserAccess(Blog blog, String allowedStatus) {
+        Users user = getCurrentUser();
+        if (!blog.getAuthor().equals(user)) {
+            throw new EntityNotFoundException("You don't have permission to access this blog");
+        }
+        
+        if (allowedStatus != null && !blog.getBlogStatus().equals(allowedStatus)) {
+            throw new EntityNotFoundException("Blog must be in " + allowedStatus + " status");
+        }
+        
+        return user;
+    }
 
 	public BlogDTO createBlog(BlogUpdateDTO blog) {
-		
-		Authentication authentication=SecurityContextHolder.getContext().getAuthentication();
-		String username=authentication.getName();
-		Optional<Users> user=userRepo.findByEmail(username);
-		if(user.isEmpty()) {
-			throw new UsernameNotFoundException(username);
-		}
-		Users author=user.get();
+		Users author=getCurrentUser();
 		Blog blogobj=new Blog();
 		blogobj.setTitle(blog.getTitle());
 		blogobj.setContent(blog.getContent());
@@ -79,89 +91,63 @@ public class BlogService {
 	}
 
 	public BlogDTO viewBlog(int id) {
-		Optional<Blog> blog=blogRepo.findById(id);
-		if(blog.isPresent()) {
-			Blog b=blog.get();
-			if(b.getBlogStatus().equals("PUBLISHED")) {
-			b.setViews(b.getViews()+1);
-			blogRepo.save(b);
-			return convertToDTO(b);
-			}
-			System.out.println("Not accessible");
-		}
-		return null;
-		
-	}
-
-	public BlogDTO updateBlog(BlogUpdateDTO blog,int id) {
-		Optional<Blog> blogobj=blogRepo.findById(id);
-		
-		if(blogobj.isPresent()) {
-			Blog b=blogobj.get();
-			Users userobj=b.getAuthor();
-			Authentication authentication=SecurityContextHolder.getContext().getAuthentication();
-			String username=authentication.getName();
-			Users user=userRepo.findByEmail(username).get();
-			if(userobj.equals(user) && b.getBlogStatus().equals("DRAFT")) {
-				b.setCategory(blog.getCategory());
-				b.setTitle(blog.getTitle());
-				b.setContent(blog.getContent());
-				b.setUpdatedAt(LocalDateTime.now());
-				
-				blogRepo.save(b);
-				
-				return convertToDTO(b);
-						
-			}
-			System.out.println("Not accessible");
+			Blog blog = blogRepo.findById(id)
+                .orElseThrow(() -> new EntityNotFoundException("Blog not found"));
 			
-		}
-		System.out.println("Blog not present");
-		return null;
+			if(blog.getBlogStatus().equals("PUBLISHED")) {
+			blog.setViews(blog.getViews()+1);
+			blogRepo.save(blog);
+			return convertToDTO(blog);
+			}
+			throw new EntityNotFoundException("Blog is not published or does not exist.");
+		
 	}
 
-	public BlogDTO publishBlog(int id) {
+	public BlogDTO updateBlog(BlogUpdateDTO blogDto,int id) {
+		 Blog blog = blogRepo.findById(id)
+	                .orElseThrow(() -> new EntityNotFoundException("Blog not found"));
+	        
+	        validateUserAccess(blog, "DRAFT");
+	        
+	        blog.setCategory(blogDto.getCategory());
+	        blog.setTitle(blogDto.getTitle());
+	        blog.setContent(blogDto.getContent());
+	        blog.setUpdatedAt(LocalDateTime.now());
+	        
+	        return convertToDTO(blogRepo.save(blog));
 		
-		Optional<Blog> blog=blogRepo.findById(id);
-		if(blog.isPresent()) {
-			Authentication authentication=SecurityContextHolder.getContext().getAuthentication();
-			String username=authentication.getName();
-			Users user=userRepo.findByEmail(username).get();
-			Blog blogobj=blog.get();
-			if(blogobj.getAuthor().equals(user) && blogobj.getBlogStatus().equals("DRAFT")) {
-				blogobj.setBlogStatus("PUBLISHED");
-				blogobj.setUpdatedAt(LocalDateTime.now());
-				blogRepo.save(blogobj);
-				
-				return convertToDTO(blogobj);
-						
-			}
-			System.out.println("not accessible");
-		}
-		System.out.println("not present");
-		return null;
 	}
 
-	public BlogDTO draftBlog(int id) {
-		Optional<Blog> blog=blogRepo.findById(id);
-		if(blog.isPresent()) {
-			Authentication authentication=SecurityContextHolder.getContext().getAuthentication();
-			String username=authentication.getName();
-			Users user=userRepo.findByEmail(username).get();
-			Blog blogobj=blog.get();
-			if(blogobj.getAuthor().equals(user) && blogobj.getBlogStatus().equals("PUBLISHED")) {
-				blogobj.setBlogStatus("DRAFT");
-				blogobj.setUpdatedAt(LocalDateTime.now());
-				blogRepo.save(blogobj);
-				
-				return convertToDTO(blogobj);
-						
-			}
-			throw new EntityNotFoundException("Not accessible");
-		}
-		throw new EntityNotFoundException("Blog not found");
-		
-		
-	}
+	 public BlogDTO publishBlog(int id) {
+	        Blog blog = blogRepo.findById(id)
+	                .orElseThrow(() -> new EntityNotFoundException("Blog not found"));
+	        
+	        validateUserAccess(blog, "DRAFT");
+	        
+	        blog.setBlogStatus("PUBLISHED");
+	        blog.setUpdatedAt(LocalDateTime.now());
+	        
+	        return convertToDTO(blogRepo.save(blog));
+	    }
+
+	 public BlogDTO draftBlog(int id) {
+	        Blog blog = blogRepo.findById(id)
+	                .orElseThrow(() -> new EntityNotFoundException("Blog not found"));
+	        
+	        validateUserAccess(blog, "PUBLISHED");
+	        
+	        blog.setBlogStatus("DRAFT");
+	        blog.setUpdatedAt(LocalDateTime.now());
+	        
+	        return convertToDTO(blogRepo.save(blog));
+	    }
+
+	 public void delete(int id) {
+	        Blog blog = blogRepo.findById(id)
+	                .orElseThrow(() -> new EntityNotFoundException("Blog not found"));
+	        
+	        validateUserAccess(blog, null);
+	        blogRepo.delete(blog);
+	    }
 
 }
